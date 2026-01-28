@@ -1,11 +1,20 @@
-'use client';
+"use client";
 
-type Props = {
-  windOn: boolean;
-  setWindOn: (value: boolean) => void;
+import type { Dispatch, SetStateAction } from "react";
+
+type LayersState = {
+  radar: boolean;
+  wind: boolean;
+  temperature: boolean;
+  clouds: boolean;
 };
 
-export default function LayerPanel({ windOn, setWindOn }: Props) {
+type Props = {
+  layers: LayersState;
+  setLayers: Dispatch<SetStateAction<LayersState>>;
+};
+
+export default function LayerPanel({ layers, setLayers }: Props) {
   return (
     <div className="absolute top-4 left-4 z-10 w-64 rounded bg-white shadow p-4">
       <h2 className="mb-2 font-semibold">Layers</h2>
@@ -14,19 +23,21 @@ export default function LayerPanel({ windOn, setWindOn }: Props) {
         <label className="flex items-center gap-2">
           <input
             type="checkbox"
-            checked={windOn}
-            onChange={(e) => setWindOn(e.target.checked)}
+            checked={layers.radar}
+            onChange={(e) =>
+              setLayers((prev) => ({ ...prev, radar: e.target.checked }))
+            }
           />
           Radar (free)
         </label>
 
         <label className="flex items-center gap-2 opacity-50">
-          <input type="checkbox" disabled />
+          <input type="checkbox" checked={layers.temperature} disabled />
           Temperature (next)
         </label>
 
         <label className="flex items-center gap-2 opacity-50">
-          <input type="checkbox" disabled />
+          <input type="checkbox" checked={layers.clouds} disabled />
           Cloud Cover (next)
         </label>
       </div>
