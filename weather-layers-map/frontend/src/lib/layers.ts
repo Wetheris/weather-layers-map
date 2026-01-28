@@ -1,12 +1,12 @@
 import type { Map } from "maplibre-gl";
 
 export type LayerKey = "radar" | "wind" | "temperature" | "clouds";
-
 export type LayersState = Record<LayerKey, boolean>;
 
 type LayerDef = {
   key: LayerKey;
   label: string;
+  enabled: boolean;
   add: (map: Map) => void;
   setVisible: (map: Map, on: boolean) => void;
 };
@@ -20,6 +20,7 @@ export const LAYERS: Record<LayerKey, LayerDef> = {
   radar: {
     key: "radar",
     label: "Radar (free)",
+    enabled: true,
     add: (map) => {
       const sourceId = "radar-source";
       const layerId = "radar";
@@ -47,21 +48,24 @@ export const LAYERS: Record<LayerKey, LayerDef> = {
 
   wind: {
     key: "wind",
-    label: "Wind",
+    label: "Wind (next)",
+    enabled: false,
     add: () => {},
     setVisible: () => {},
   },
 
   temperature: {
     key: "temperature",
-    label: "Temperature",
+    label: "Temperature (next)",
+    enabled: false,
     add: () => {},
     setVisible: () => {},
   },
 
   clouds: {
     key: "clouds",
-    label: "Clouds",
+    label: "Cloud Cover (next)",
+    enabled: false,
     add: () => {},
     setVisible: () => {},
   },
