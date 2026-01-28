@@ -1,13 +1,7 @@
 "use client";
 
 import type { Dispatch, SetStateAction } from "react";
-
-type LayersState = {
-  radar: boolean;
-  wind: boolean;
-  temperature: boolean;
-  clouds: boolean;
-};
+import type { LayersState } from "@/lib/layers";
 
 type Props = {
   layers: LayersState;
