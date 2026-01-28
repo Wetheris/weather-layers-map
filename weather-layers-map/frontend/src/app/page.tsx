@@ -6,6 +6,16 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import LayerPanel from "@/components/LayerPanel";
 import { DEFAULT_LAYERS, LAYERS, type LayersState } from "@/lib/layers";
 
+function formatMinutesAgo(tsSeconds: number | null): string {
+  if (!tsSeconds) return "";
+  const diffMs = Math.max(0, Date.now() - tsSeconds * 1000);
+  const mins = Math.round(diffMs / 60000);
+
+  if (mins <= 0) return "just now";
+  if (mins === 1) return "1 minute ago";
+  return `${mins} minutes ago`;
+}
+
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
@@ -15,6 +25,13 @@ export default function Home() {
   // Radar frames
   const [radarTimes, setRadarTimes] = useState<number[]>([]);
   const [radarIndex, setRadarIndex] = useState<number>(0);
+
+  // ticker so "minutes ago" updates while app is open
+  const [nowTick, setNowTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setNowTick((x) => x + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,16 +60,10 @@ export default function Home() {
     return radarTimes[idx];
   }, [radarTimes, radarIndex]);
 
-  const selectedRadarLabel = useMemo(() => {
-    if (!selectedRadarTs) return "";
-    const d = new Date(selectedRadarTs * 1000);
-    return d.toLocaleString(undefined, {
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }, [selectedRadarTs]);
+  const radarLabel = useMemo(() => {
+    void nowTick; // depend on tick so label updates
+    return formatMinutesAgo(selectedRadarTs);
+  }, [selectedRadarTs, nowTick]);
 
   useEffect(() => {
     if (!mapContainer.current) return;
@@ -72,10 +83,13 @@ export default function Home() {
       // Add radar (ts may be null at first, that’s ok)
       LAYERS.radar.add(map, { radarTs: selectedRadarTs });
 
-      // Critical: radar is created as visibility "none", so set it
+      // radar is created as visibility "none", so flip it immediately
       LAYERS.radar.setVisible(map, layers.radar);
 
-      // Apply visibility for the rest
+      // Add other implemented layers here (clouds, etc) when ready:
+      LAYERS.clouds.add(map);
+
+      // Apply visibility for all layers
       (Object.keys(layers) as Array<keyof LayersState>).forEach((k) => {
         LAYERS[k].setVisible(map, layers[k]);
       });
@@ -88,7 +102,7 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When the radar frame changes, rebuild tiles and restore visibility
+  // When radar frame changes, rebuild tiles and restore visibility
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
@@ -124,7 +138,7 @@ export default function Home() {
         radarTimes={radarTimes}
         radarIndex={radarIndex}
         setRadarIndex={setRadarIndex}
-        radarLabel={selectedRadarLabel}
+        radarLabel={radarLabel}
       />
       <div ref={mapContainer} className="h-full w-full" />
     </main>

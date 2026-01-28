@@ -77,11 +77,33 @@ export const LAYERS: Record<LayerKey, LayerDef> = {
 
   clouds: {
     key: "clouds",
-    label: "Cloud Cover (next)",
-    enabled: false,
-    add: () => {},
-    setVisible: () => {},
+    label: "Clouds",
+    enabled: true,
+    add: (map) => {
+      const sourceId = "clouds-source";
+      const layerId = "clouds";
+
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: "raster",
+          tiles: ["/api/owm-clouds?z={z}&x={x}&y={y}"],
+          tileSize: 256,
+        });
+      }
+
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.5 },
+        });
+      }
+    },
+    setVisible: (map, on) => setLayerVisibility(map, "clouds", on),
   },
+
 };
 
 export const DEFAULT_LAYERS: LayersState = {
