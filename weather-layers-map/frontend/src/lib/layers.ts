@@ -3,11 +3,18 @@ import type { Map } from "maplibre-gl";
 export type LayerKey = "radar" | "wind" | "temperature" | "clouds";
 export type LayersState = Record<LayerKey, boolean>;
 
+type LayerAddOpts = {
+  radarTs?: number | null;
+};
+
 type LayerDef = {
   key: LayerKey;
   label: string;
   enabled: boolean;
-  add: (map: Map) => void;
+
+  // allow optional opts for layers that need them (radar frame)
+  add: (map: Map, opts?: LayerAddOpts) => void;
+
   setVisible: (map: Map, on: boolean) => void;
 };
 
@@ -21,27 +28,33 @@ export const LAYERS: Record<LayerKey, LayerDef> = {
     key: "radar",
     label: "Radar (free)",
     enabled: true,
-    add: (map) => {
+    add: (map, opts) => {
       const sourceId = "radar-source";
       const layerId = "radar";
 
-      if (!map.getSource(sourceId)) {
-        map.addSource(sourceId, {
-          type: "raster",
-          tiles: ["/api/rv-tile?z={z}&x={x}&y={y}"],
-          tileSize: 256,
-        });
-      }
+      const ts = opts?.radarTs;
+      const tileUrl = ts
+        ? `/api/rv-tile?z={z}&x={x}&y={y}&ts=${ts}`
+        : `/api/rv-tile?z={z}&x={x}&y={y}`;
 
-      if (!map.getLayer(layerId)) {
-        map.addLayer({
-          id: layerId,
-          type: "raster",
-          source: sourceId,
-          layout: { visibility: "none" },
-          paint: { "raster-opacity": 0.6 },
-        });
-      }
+      // Simplest reliable way to swap tiles when ts changes:
+      // remove + re-add source/layer
+      if (map.getLayer(layerId)) map.removeLayer(layerId);
+      if (map.getSource(sourceId)) map.removeSource(sourceId);
+
+      map.addSource(sourceId, {
+        type: "raster",
+        tiles: [tileUrl],
+        tileSize: 256,
+      });
+
+      map.addLayer({
+        id: layerId,
+        type: "raster",
+        source: sourceId,
+        layout: { visibility: "none" },
+        paint: { "raster-opacity": 0.6 },
+      });
     },
     setVisible: (map, on) => setLayerVisibility(map, "radar", on),
   },
