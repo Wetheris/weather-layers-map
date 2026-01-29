@@ -26,7 +26,7 @@ const setLayerVisibility = (map: Map, layerId: string, on: boolean) => {
 export const LAYERS: Record<LayerKey, LayerDef> = {
   radar: {
     key: "radar",
-    label: "Radar (free)",
+    label: "Radar",
     enabled: true,
     add: (map, opts) => {
       const sourceId = "radar-source";
@@ -59,21 +59,64 @@ export const LAYERS: Record<LayerKey, LayerDef> = {
     setVisible: (map, on) => setLayerVisibility(map, "radar", on),
   },
 
-  wind: {
+    wind: {
     key: "wind",
-    label: "Wind (next)",
-    enabled: false,
-    add: () => {},
-    setVisible: () => {},
+    label: "Wind",
+    enabled: true,
+    add: (map) => {
+      const sourceId = "wind-source";
+      const layerId = "wind";
+
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: "raster",
+          tiles: ["/api/owm-wind?z={z}&x={x}&y={y}"],
+          tileSize: 256,
+        });
+      }
+
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.6 },
+        });
+      }
+    },
+    setVisible: (map, on) => setLayerVisibility(map, "wind", on),
   },
 
-  temperature: {
+    temperature: {
     key: "temperature",
-    label: "Temperature (next)",
-    enabled: false,
-    add: () => {},
-    setVisible: () => {},
+    label: "Temperature",
+    enabled: true,
+    add: (map) => {
+      const sourceId = "temp-source";
+      const layerId = "temperature";
+
+      if (!map.getSource(sourceId)) {
+        map.addSource(sourceId, {
+          type: "raster",
+          tiles: ["/api/owm-temp?z={z}&x={x}&y={y}"],
+          tileSize: 256,
+        });
+      }
+
+      if (!map.getLayer(layerId)) {
+        map.addLayer({
+          id: layerId,
+          type: "raster",
+          source: sourceId,
+          layout: { visibility: "none" },
+          paint: { "raster-opacity": 0.55 },
+        });
+      }
+    },
+    setVisible: (map, on) => setLayerVisibility(map, "temperature", on),
   },
+
 
   clouds: {
     key: "clouds",

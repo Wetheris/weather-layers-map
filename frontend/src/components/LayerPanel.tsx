@@ -10,6 +10,7 @@ type Props = {
   radarTimes: number[];
   radarIndex: number;
   setRadarIndex: Dispatch<SetStateAction<number>>;
+  radarLabel: string;
 };
 
 function formatMinutesAgo(tsSeconds: number | null): string {
@@ -30,6 +31,7 @@ export default function LayerPanel({
   radarTimes,
   radarIndex,
   setRadarIndex,
+  radarLabel,
 }: Props) {
   const toggle = (key: LayerKey, checked: boolean) => {
     setLayers((prev) => ({ ...prev, [key]: checked }));

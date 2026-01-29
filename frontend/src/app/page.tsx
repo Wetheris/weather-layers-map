@@ -5,6 +5,7 @@ import maplibregl, { Map } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 import LayerPanel from "@/components/LayerPanel";
 import { DEFAULT_LAYERS, LAYERS, type LayersState } from "@/lib/layers";
+import TemperatureLegend from "@/components/TemperatureLegend";
 
 function formatMinutesAgo(tsSeconds: number | null): string {
   if (!tsSeconds) return "";
@@ -16,10 +17,18 @@ function formatMinutesAgo(tsSeconds: number | null): string {
   return `${mins} minutes ago`;
 }
 
+const BASEMAPS = {
+  light: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+  dark: "https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json",
+} as const;
+
+type BasemapKey = keyof typeof BASEMAPS;
+
 export default function Home() {
   const mapContainer = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<Map | null>(null);
 
+  const [basemap, setBasemap] = useState<BasemapKey>("light");
   const [layers, setLayers] = useState<LayersState>(DEFAULT_LAYERS);
 
   // Radar frames
@@ -65,13 +74,26 @@ export default function Home() {
     return formatMinutesAgo(selectedRadarTs);
   }, [selectedRadarTs, nowTick]);
 
+  // Re-add overlays after style changes (or initial load)
+  const applyOverlays = (map: Map) => {
+    LAYERS.radar.add(map, { radarTs: selectedRadarTs });
+    LAYERS.clouds.add(map);
+    LAYERS.wind.add(map);
+    LAYERS.temperature.add(map);
+
+    (Object.keys(layers) as Array<keyof LayersState>).forEach((k) => {
+      LAYERS[k].setVisible(map, layers[k]);
+    });
+  };
+
+  // Initialize map once
   useEffect(() => {
     if (!mapContainer.current) return;
     if (mapRef.current) return;
 
     const map = new maplibregl.Map({
       container: mapContainer.current,
-      style: "https://demotiles.maplibre.org/style.json",
+      style: BASEMAPS[basemap],
       center: [0, 20],
       zoom: 2,
     });
@@ -80,19 +102,7 @@ export default function Home() {
     mapRef.current = map;
 
     map.on("load", () => {
-      // Add radar (ts may be null at first, that’s ok)
-      LAYERS.radar.add(map, { radarTs: selectedRadarTs });
-
-      // radar is created as visibility "none", so flip it immediately
-      LAYERS.radar.setVisible(map, layers.radar);
-
-      // Add other implemented layers here (clouds, etc) when ready:
-      LAYERS.clouds.add(map);
-
-      // Apply visibility for all layers
-      (Object.keys(layers) as Array<keyof LayersState>).forEach((k) => {
-        LAYERS[k].setVisible(map, layers[k]);
-      });
+      applyOverlays(map);
     });
 
     return () => {
@@ -120,12 +130,30 @@ export default function Home() {
     apply();
   }, [selectedRadarTs, layers.radar]);
 
-  // Toggle visibility for all layers (safe, no re-add)
+  // Switch basemap and then re-add overlays after the new style loads
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+
+    const onStyleLoad = () => {
+      applyOverlays(map);
+    };
+
+    map.once("style.load", onStyleLoad);
+    map.setStyle(BASEMAPS[basemap]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [basemap]);
+
+  // Toggle visibility for all layers
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
 
     (Object.keys(layers) as Array<keyof LayersState>).forEach((k) => {
+      // Ensure non-radar layers exist if user turns them on later
+      if (layers[k] && k !== "radar") {
+        LAYERS[k].add(map);
+      }
       LAYERS[k].setVisible(map, layers[k]);
     });
   }, [layers]);
@@ -140,6 +168,30 @@ export default function Home() {
         setRadarIndex={setRadarIndex}
         radarLabel={radarLabel}
       />
+
+      <div className="absolute top-4 right-20 z-10 rounded bg-white/95 shadow p-2 text-sm">
+        <button
+          type="button"
+          className={`px-2 py-1 rounded ${
+            basemap === "light" ? "bg-slate-900 text-white" : "bg-slate-100"
+          }`}
+          onClick={() => setBasemap("light")}
+        >
+          Light
+        </button>
+        <button
+          type="button"
+          className={`ml-2 px-2 py-1 rounded ${
+            basemap === "dark" ? "bg-slate-900 text-white" : "bg-slate-100"
+          }`}
+          onClick={() => setBasemap("dark")}
+        >
+          Dark
+        </button>
+      </div>
+
+      <TemperatureLegend show={layers.temperature} />
+
       <div ref={mapContainer} className="h-full w-full" />
     </main>
   );
